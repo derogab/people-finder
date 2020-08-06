@@ -1,6 +1,6 @@
 import os
 import face_recognition
-from detective.database import Database
+from people_finder.database import Database
 
 class Recognition:
 

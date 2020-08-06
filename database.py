@@ -1,5 +1,5 @@
 from tinydb import TinyDB, Query
-from detective.person import Person
+from people_finder.person import Person
 
 class Database:
     
