@@ -3,7 +3,7 @@ A tool to easy recognize people in images.
 
 ### Install
 ```
-pip install people_finder
+pip install people-finder
 ```
 
 ### Usage
