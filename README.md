@@ -1,4 +1,4 @@
-# people_finder
+# people-finder
 A tool to easy recognize people in images.
 
 ### Install
