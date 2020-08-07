@@ -46,6 +46,11 @@ class Recognition:
         # This method is fairly accurate, but not as accurate as the CNN model and not GPU accelerated.
         unknown_face_locations = face_recognition.face_locations(unknown_image, model="hog")
         
+        # Check if there are people
+        if len(unknown_face_locations) == 0:
+            # No people detected
+            return []
+
         # Check image for each known person
         for person in self.db.get_people():
             person_known_faces = []
