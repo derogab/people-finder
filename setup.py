@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="people_finder",
-    version="0.1.1-alpha",
+    version="0.2.0-alpha",
     author="derogab",
     author_email="derosagabriele@outlook.it",
     description="A tool to recognize people in images",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/derogab/people_finder",
+    url="https://github.com/derogab/people-finder",
     license='MIT',
     package_dir={'people_finder': 'people_finder'},
     packages=[
@@ -19,8 +19,9 @@ setuptools.setup(
     ],
     install_requires=[
         'uuid',
-        'tinydb',
-        'dlib',
+        'numpy',
+        'scikit-learn',
+        'opencv-contrib-python',
         'face_recognition'
     ],
     keywords='people_finder',

@@ -1,6 +1,13 @@
+import math
+from sklearn import neighbors
 import os
+import os.path
+import pickle
 import face_recognition
-from people_finder.database import Database
+from face_recognition.face_recognition_cli import image_files_in_folder
+import numpy as np
+import json
+import uuid
 
 class Recognition:
 
@@ -8,94 +15,136 @@ class Recognition:
         ''' Constructor for Recognition class. '''
         pass
 
-    def __in_array(self, item, array):
-        ''' Check if item is in array. '''
-        for i in array:
-            if item == i:
-                return True
-        return False
+    def __insert_person(self, name, known_people_path):
+        ''' Insert person in known people folder. '''
+        # Generate id
+        id = uuid.uuid1().hex
+        # Generate person
+        person = {
+            'id': id,
+            'name': name
+        }
+        # Create person dir
+        person_dir = os.path.join(known_people_path, 'id_' + id)
+        os.mkdir(person_dir)
+        # Write person in json file
+        with open(os.path.join(person_dir, 'info.json'), 'w') as outfile:
+            json.dump(person, outfile)
 
-    def __array_bool(self, array):
-        ''' Check if a value is true in array. '''
-        for value in array:
-            if value == True:
-                return True
-        return False
+    def __train(self, train_dir, model_save_path=None, n_neighbors=None, knn_algo='ball_tree'):
+        """
+        Trains a k-nearest neighbors classifier for face recognition.
 
-    def __insert_person(self, person):
-        ''' Insert person in db. '''
-        self.db.insert_person(person)
+        :param train_dir: directory that contains a sub-directory for each known person.
 
-    def set_database(self, db_file):
-        ''' Set db file to use. '''
-        self.db = Database(db_file)
+        Structure:
+            <train_dir>/
+            ├── <person1>/
+            │   ├── info.json
+            │   ├── <somename1>.jpeg
+            │   ├── <somename2>.jpeg
+            │   ├── ...
+            ├── <person2>/
+            │   ├── info.json
+            │   ├── <somename1>.jpeg
+            │   └── <somename2>.jpeg
+            └── ...
 
-    def insert_recognizable_people(self, recognizable_people):
-        ''' Insert recognizable people. '''
-        for person in recognizable_people:
-            self.__insert_person(person)
+        :param model_save_path: (optional) path to save model on disk
+        :param n_neighbors: (optional) number of neighbors to weigh in classification. Chosen automatically if not specified
+        :param knn_algo: (optional) underlying data structure to support knn.default is ball_tree
+        :return: returns knn classifier that was trained on the given data.
+        """
+        X = []
+        y = []
 
-    def find_people_in_image(self, filename):
-        ''' Find people in a image. '''
-        people_found = []
+        # Loop through each person in the training set
+        for class_dir in os.listdir(train_dir):
+            if not os.path.isdir(os.path.join(train_dir, class_dir)):
+                continue
+            
+            if not os.path.isfile(os.path.join(os.path.join(train_dir, class_dir), 'info.json')):
+                continue
+            with open(os.path.join(os.path.join(train_dir, class_dir), 'info.json')) as json_file:
+                data = json.load(json_file)
+            if not data or data['name'] == '':
+                continue
 
-        # Load the jpg file into numpy array
-        unknown_image = face_recognition.load_image_file(filename)
-        
-        # Find all the faces in the image using the default HOG-based model.
-        # This method is fairly accurate, but not as accurate as the CNN model and not GPU accelerated.
-        unknown_face_locations = face_recognition.face_locations(unknown_image, model="hog")
-        
-        # Check if there are people
-        if len(unknown_face_locations) == 0:
-            # No people detected
+            # Loop through each training image for the current person
+            for img_path in image_files_in_folder(os.path.join(train_dir, class_dir)):
+                image = face_recognition.load_image_file(img_path)
+                face_bounding_boxes = face_recognition.face_locations(image)
+
+                if len(face_bounding_boxes) == 1: # If there is 1 person in a training image
+                    # Add face encoding for current image to the training set
+                    X.append(face_recognition.face_encodings(image, known_face_locations=face_bounding_boxes)[0])
+                    y.append(data['name'])
+
+        # Determine how many neighbors to use for weighting in the KNN classifier
+        if n_neighbors is None:
+            n_neighbors = int(round(math.sqrt(len(X))))
+
+        # Create and train the KNN classifier
+        knn_clf = neighbors.KNeighborsClassifier(n_neighbors=n_neighbors, algorithm=knn_algo, weights='distance')
+        knn_clf.fit(X, y)
+
+        # Save the trained KNN classifier
+        if model_save_path is not None:
+            with open(model_save_path, 'wb') as f:
+                pickle.dump(knn_clf, f)
+
+        return knn_clf
+
+    def __predict(self, X_frame, knn_clf=None, model_path=None, distance_threshold=0.5):
+        """
+        Recognizes faces in given image using a trained KNN classifier
+
+        :param X_frame: frame to do the prediction on.
+        :param knn_clf: (optional) a knn classifier object. if not specified, model_save_path must be specified.
+        :param model_path: (optional) path to a pickled knn classifier. if not specified, model_save_path must be knn_clf.
+        :param distance_threshold: (optional) distance threshold for face classification. the larger it is, the more chance
+            of mis-classifying an unknown person as a known one.
+        :return: a list of names and face locations for the recognized faces in the image: [(name, bounding box), ...].
+            For faces of unrecognized persons, the name 'unknown' will be returned.
+        """
+        if knn_clf is None and model_path is None:
+            raise Exception("Must supply knn classifier either thourgh knn_clf or model_path")
+
+        # Load a trained KNN model (if one was passed in)
+        if knn_clf is None:
+            with open(model_path, 'rb') as f:
+                knn_clf = pickle.load(f)
+
+        X_face_locations = face_recognition.face_locations(X_frame)
+
+        # If no faces are found in the image, return an empty result.
+        if len(X_face_locations) == 0:
             return []
 
-        # Check image for each known person
-        for person in self.db.get_people():
-            person_known_faces = []
+        # Find encodings for faces in the test image
+        faces_encodings = face_recognition.face_encodings(X_frame, known_face_locations=X_face_locations)
 
-            for file in os.listdir(person.get_source()):
-                if file.endswith(".jpg"):
+        # Use the KNN model to find the best matches for the test face
+        closest_distances = knn_clf.kneighbors(faces_encodings, n_neighbors=1)
+        are_matches = [closest_distances[0][i][0] <= distance_threshold for i in range(len(X_face_locations))]
 
-                    # Load the jpg file into numpy array
-                    person_image = face_recognition.load_image_file(os.path.join(person.get_source(), file))
+        # Predict classes and remove classifications that aren't within the threshold
+        return [(pred, loc) if rec else ("unknown", loc) for pred, loc, rec in zip(knn_clf.predict(faces_encodings), X_face_locations, are_matches)]
 
-                    # Get the face encodings for each face in each image file
-                    # Since there could be more than one face in each image, it returns a list of encodings.
-                    # But since I know each image only has one face, I only care about the first encoding in each image, so I grab index 0.
-                    try:
-                        person_face_encoding = face_recognition.face_encodings(person_image)[0]
-                    except IndexError:
-                        # I wasn't able to locate any faces in at least one of the images. Check the image files.
-                        continue
-                    
-                    # Insert encoded face in list
-                    person_known_faces.append(person_face_encoding)
+    def insert_recognizable_people(self, recognizable_people, known_people_path = 'people/'):
+        ''' Insert recognizable people. '''
+        for person in recognizable_people:
+            self.__insert_person(person, known_people_path)
 
-            if person_known_faces != []:
+    def train_dataset(self, train_folder_path = 'people/', trained_model_path = "trained_knn_model.clf"):
+        ''' Train known people '''
+        return self.__train(train_folder_path, model_save_path=trained_model_path, n_neighbors=2)
 
-                for unknown_face_location in unknown_face_locations:
-
-                    # Print the location of each face in this image
-                    top, right, bottom, left = unknown_face_location
-
-                    # You can access the actual face itself like this:
-                    face_image = unknown_image[top:bottom, left:right]
-
-                    # Encode found image
-                    try:
-                        unknown_face_encoding = face_recognition.face_encodings(face_image)[0]
-                    except IndexError:
-                        # I wasn't able to locate any faces in at least one of the images. Check the image files.
-                        continue
-
-                    # results is an array of True/False telling if the unknown face matched anyone in the person_known_faces array
-                    results = face_recognition.compare_faces(person_known_faces, unknown_face_encoding)
-
-                    if self.__array_bool(results):
-                        # This person is in the image
-                        if not self.__in_array(person, people_found): # check if found previously
-                            people_found.append(person)
-
-        return people_found
+    def find_people_in_image(self, filename, trained_model_path = "trained_knn_model.clf"):
+        ''' Find people in a image. '''
+        # Load the jpg file into numpy array
+        unknown_image = face_recognition.load_image_file(filename)
+        # Find people in image
+        predictions = self.__predict(unknown_image, model_path=trained_model_path)
+        # Return the predictions
+        return [person_found for person_found, location in predictions]
