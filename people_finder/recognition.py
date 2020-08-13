@@ -60,9 +60,11 @@ class Recognition:
 
         # Loop through each person in the training set
         for class_dir in os.listdir(train_dir):
+            # Check if current person path is a dir
             if not os.path.isdir(os.path.join(train_dir, class_dir)):
                 continue
             
+            # Check if there is current person info file
             if not os.path.isfile(os.path.join(os.path.join(train_dir, class_dir), 'info.json')):
                 continue
             with open(os.path.join(os.path.join(train_dir, class_dir), 'info.json')) as json_file:
@@ -131,16 +133,16 @@ class Recognition:
         # Predict classes and remove classifications that aren't within the threshold
         return [(pred, loc) if rec else ("unknown", loc) for pred, loc, rec in zip(knn_clf.predict(faces_encodings), X_face_locations, are_matches)]
 
-    def insert_recognizable_people(self, recognizable_people, known_people_path = 'people/'):
+    def insert_recognizable_people(self, people, train_folder_path = 'train/'):
         ''' Insert recognizable people. '''
-        for person in recognizable_people:
-            self.__insert_person(person, known_people_path)
+        for person in people:
+            self.__insert_person(person, train_folder_path)
 
-    def train_dataset(self, train_folder_path = 'people/', trained_model_path = "trained_knn_model.clf"):
+    def train_dataset(self, train_folder_path = 'train/', trained_model_path = "trained_model.clf"):
         ''' Train known people '''
         return self.__train(train_folder_path, model_save_path=trained_model_path, n_neighbors=2)
 
-    def find_people_in_image(self, filename, trained_model_path = "trained_knn_model.clf"):
+    def find_people_in_image(self, filename, trained_model_path = "trained_model.clf"):
         ''' Find people in a image. '''
         # Load the jpg file into numpy array
         unknown_image = face_recognition.load_image_file(filename)
