@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="people_finder",
+    name="people-finder",
     version="0.2.1-alpha",
     author="derogab",
     author_email="derosagabriele@outlook.it",
