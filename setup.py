@@ -13,9 +13,9 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/derogab/people-finder",
     license='MIT',
-    package_dir={'people_finder': 'people_finder'},
+    package_dir={'people-finder': 'people-finder'},
     packages=[
-        'people_finder',
+        'people-finder',
     ],
     install_requires=[
         'uuid',
@@ -24,7 +24,7 @@ setuptools.setup(
         'opencv-contrib-python',
         'face_recognition'
     ],
-    keywords='people_finder',
+    keywords='people-finder',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
