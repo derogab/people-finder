@@ -13,9 +13,9 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/derogab/people-finder",
     license='MIT',
-    package_dir={'people-finder': 'people-finder'},
+    package_dir={'people_finder': 'people-finder'},
     packages=[
-        'people-finder',
+        'people_finder',
     ],
     install_requires=[
         'uuid',
