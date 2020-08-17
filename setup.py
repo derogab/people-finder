@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="people-finder",
-    version="0.2.1-alpha",
+    version="0.2.2-alpha",
     author="derogab",
     author_email="derosagabriele@outlook.it",
     description="A tool to recognize people in images",
