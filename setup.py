@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/derogab/people-finder",
     license='MIT',
-    package_dir={'people_finder': 'people-finder'},
+    package_dir={'people_finder': 'people_finder'},
     packages=[
         'people_finder',
     ],
