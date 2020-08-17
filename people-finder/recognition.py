@@ -11,9 +11,12 @@ import uuid
 
 class Recognition:
 
-    def __init__(self):
+    def __init__(self, model='hog'):
         ''' Constructor for Recognition class. '''
-        pass
+        # Get deep learning face detection model 
+        self.model = model
+        if self.model not in ['hog', 'cnn']:
+            self.model = 'hog'
 
     def __insert_person(self, name, known_people_path):
         ''' Insert person in known people folder. '''
@@ -75,7 +78,7 @@ class Recognition:
             # Loop through each training image for the current person
             for img_path in image_files_in_folder(os.path.join(train_dir, class_dir)):
                 image = face_recognition.load_image_file(img_path)
-                face_bounding_boxes = face_recognition.face_locations(image)
+                face_bounding_boxes = face_recognition.face_locations(image, model=self.model)
 
                 if len(face_bounding_boxes) == 1: # If there is 1 person in a training image
                     # Add face encoding for current image to the training set
@@ -117,7 +120,7 @@ class Recognition:
             with open(model_path, 'rb') as f:
                 knn_clf = pickle.load(f)
 
-        X_face_locations = face_recognition.face_locations(X_frame)
+        X_face_locations = face_recognition.face_locations(X_frame, model=self.model)
 
         # If no faces are found in the image, return an empty result.
         if len(X_face_locations) == 0:
