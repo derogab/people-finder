@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="people-finder",
-    version="0.2.3-beta",
+    version="0.2.4-beta",
     author="derogab",
     author_email="derosagabriele@outlook.it",
     description="A tool to recognize people in images",
@@ -21,7 +21,7 @@ setuptools.setup(
         'uuid',
         'numpy',
         'scikit-learn',
-        'opencv-contrib-python',
+        'opencv-python',
         'face_recognition'
     ],
     keywords='people-finder',
